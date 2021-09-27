@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-signed-notary
+  namespace: content-trust
+spec:
+  selector:
+    matchLabels:
+      app: self-signed-notary-nginx
+  template:
+    metadata:
+      labels:
+        app: self-signed-notary-nginx
+    spec:
+      containers:
+      - name: self-trusted-nginx
+        image: docker.io/smuraiwarrior2012/nginx:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80

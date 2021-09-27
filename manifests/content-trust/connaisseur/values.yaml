@@ -1,0 +1,215 @@
+# configure Connaisseur deployment
+deployment:
+  replicasCount: 1
+  image: securesystemsengineering/connaisseur:v2.1.2
+  helmHookImage: securesystemsengineering/connaisseur:helm-hook-v1.1
+  imagePullPolicy: Always
+  failurePolicy: Fail # use 'Ignore' to fail open if Connaisseur becomes unavailable
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                    - connaisseur
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+
+# configure Connaisseur service
+service:
+  type: ClusterIP
+  port: 443
+
+### VALIDATORS ###
+# validators are a set of configurations (types, public keys, authentication)
+# that can be used for validating one or multiple images (or image signatures).
+# they are tied to their respective image(s) via the image policy below. there
+# are a few handy validators pre-configured.
+validators:
+  # static validator that allows each image
+  - name: allow
+    type: static
+    approve: true
+  # static validator that denies each image
+  - name: deny
+    type: static
+    approve: false
+  - name: kub-notary
+    type: notaryv1 # or other supported validator (e.g. "cosign")
+    host: notary-server-svc.notary:4443 # in case of notaryv1, configure the notary server to be used
+    trust_roots:
+      - name: default
+        key: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEI3RccPfmz0krgrVexsQQIVe8F8rK
+          hAcq8NqAm7nk8cvzL657TqiXnWSwj6IDO/r2eTCOyTTXidEBQxW72gWD0Q==
+          -----END PUBLIC KEY-----
+    cert: |
+      -----BEGIN CERTIFICATE-----
+      MIIE+zCCAuOgAwIBAgIUOdJ2WGxK/4KiwXfpH8zPR8ZxBZcwDQYJKoZIhvcNAQEL
+      BQAwFDESMBAGA1UEAwwJbm90YXJ5LWNhMB4XDTIxMDkyMTE5NDAwNVoXDTMxMDkx
+      OTE5NDAwNVowFDESMBAGA1UEAwwJbm90YXJ5LWNhMIICIjANBgkqhkiG9w0BAQEF
+      AAOCAg8AMIICCgKCAgEAqySGeV9+MIjsypw/g10fspZE+C9UOQHUvX72uTxxbIx4
+      vrODEv4N/ovkdRCxJ45rph3wIDsij/Zu9aKYYRUW4kpiA57xoY5Zhtwca2LcIJ60
+      KxmIByluBkn33GFy9SXddk3i1yt13SHSo+W5vTXMFqiaGHu6Y+Dnb46Yh/rSjuqI
+      ChFAo9wQ4vSuMXAxVj3l6ui4Rwj5KGSpKX46CbnXP1n+fmZHIrQnpBYrrUTGdI83
+      55IiEZyq8dmvVuB6YEm82tvoyV7Q7osG9W7rJYzp5ZGqN1iyqKkCtSfPBQO4VQi4
+      oteWUBF0iJTp0HRPUub5bSOnvd0h1ge1B5aM9is79jylVBKCSvPhgvGY5RDA2VE0
+      Ho15qE5HMSZXnInoZ0sK31/oEMH4VB+5uu8PsWJF2eNX4US99RCrUZEOHHw65aXS
+      zOc6vp95Fl1/xuVu3Ie9u3CuS41WfPkiL36Wm27PrItkn0hVxB+UrOvFnqumpSUY
+      6W/7QufLFLe6md8Jl2usEOS02+BN6USZYmY/1x3fO0aYba63qroD38vZ/F79cWH6
+      Hc0nhzxG7v/5p9VCWsl6CZ+kxWyZa+HLBw1ZQf1QNEM/vz4INZyKIR0k9z6EmrsN
+      G2jaTFvFKijKa4y+VchE6gnmelNCCauUUi9gQdKx3DpflrJKd9Gn5s7qr9ropOUC
+      AwEAAaNFMEMwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNVHQ8BAf8EBAMCAUYwHQYD
+      VR0OBBYEFOVPcrfuYG/UO/3pId5u47V8AgwEMA0GCSqGSIb3DQEBCwUAA4ICAQBp
+      dQsbkPlLUyRMnncw3hgF72TDs94gr3/APhi/RLUZGXITTYQH1AIlZbimuDfiPNod
+      kVhld5BDlQn1Qp9Rrn/BLSNkG7MqO7vUe3T1gwkHbupsNvO2BeO0N+5wi+7tbCXa
+      d+5wAtwZS9UlgvJKH5eb58SLZ1lpxvF9dbRC07jY6uFcGpD1QMVzPc/W4gdywcig
+      XyH/7i0wQaFOvfup/Pp2SYBt/WHiFBEgAkMAt/42ua8w2MGPXiNIlM3KFpvnUC25
+      gPg7EbW3GVZex9V5wER2kBGtGlw7vafZqmME5ucejg8iMx48c9bSH8mcKmKPAXuL
+      kPI4XZLdrtF/dPK9isfmaBXMBuH63ZVGzgkrCnbLnAWzj1iVn+sS8Jy2yAsxPuXt
+      u7GOf3cDhNhNq5dEh5H2sEumZCW6hcAnWzZoFnGoCcXIQgotphRcceVRy/axLdBQ
+      uYzTQ22a/D833ObtDAgCoqPu5II7g8P3u1rOlXwP6fCJhQCFP0VuBYqpTZ5juGsg
+      y+HJvG6k7ZBmUUDXD9vkFURh1oPQ1VmWSeUE581dCCeOX2yR3JPTky+u2CkW/Dld
+      OUU6AiDU0tLjMSuuUJ8QA4dq2lfyfJ+2WEm5t1kezcgoWpY+3nD87sI0v3ugmHpR
+      Xrysmam8EWdKbBdQHesgWL9EELSlI1O2a9Xs2k1llQ==
+      -----END CERTIFICATE-----
+  # the `default` validator is used if no validator is specified in image policy
+  - name: default
+    type: notaryv1 # or other supported validator (e.g. "cosign")
+    host: notary.docker.io # in case of notaryv1, configure the notary server to be used
+    trust_roots:
+    # # the `default` key is used if no key is specified in image policy
+    #- name: default
+    #  key: |  # enter your public key below
+    #    -----BEGIN PUBLIC KEY-----
+    #    <add your public key here>
+    #    -----END PUBLIC KEY-----
+    #cert: |  # in case the trust data host is using a self-signed certificate
+    #  -----BEGIN CERTIFICATE-----
+    #  ...
+    #  -----END CERTIFICATE-----
+    #auth:  # credentials in case the trust data requires authentication
+    #  # either (preferred solution)
+    #  secret_name: mysecret  # reference a k8s secret in the form required by the validator type (check the docs)
+    #  # or (only for notaryv1 validator)
+    #  username: myuser
+    #  password: mypass
+  # pre-configured nv1 validator for public notary from Docker Hub
+  - name: dockerhub_basics
+    type: notaryv1
+    host: notary.docker.io
+    trust_roots:
+      # public key for official docker images (https://hub.docker.com/search?q=&type=image&image_filter=official)
+      # !if not needed feel free to remove the key!
+      - name: docker_official
+        key: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOXYta5TgdCwXTCnLU09W5T4M4r9f
+          QQrqJuADP6U7g5r9ICgPSmZuRHP/1AYUfOQW3baveKsT969EfELKj1lfCA==
+          -----END PUBLIC KEY-----
+      # public key securesystemsengineering repo including Connaisseur images
+      # !this key is critical for Connaisseur!
+      - name: securesystemsengineering_official
+        key: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsx28WV7BsQfnHF1kZmpdCTTLJaWe
+          d0CA+JOi8H4REuBaWSZ5zPDe468WuOJ6f71E7WFg3CVEVYHuoZt2UYbN/Q==
+          -----END PUBLIC KEY-----
+
+### IMAGE POLICY ###
+# the image policy ties validators and images together whereby always only the most specific rule (pattern)
+# is applied. specify if and how images should be validated by which validator via the validator name.
+policy:
+  - pattern: "docker.io/library/*:*"
+    validator: dockerhub_basics
+    with:
+      trust_root: docker_official
+
+    # Политика проверки для целевого репозитория
+  - pattern: "docker.io/smuraiwarrior2012/*:*"
+    validator: kub-notary
+
+
+  - pattern: "k8s.gcr.io/*:*"
+    validator: allow
+    # from private repository
+  - pattern: "docker.io/securesystemsengineering/*:*"
+    validator: dockerhub_basics
+    with:
+      trust_root: securesystemsengineering_official
+  - pattern: "docker.io/securesystemsengineering/*:*"
+    validator: dockerhub_basics
+    with:
+      trust_root: securesystemsengineering_official
+  - pattern: "*:*"
+    validator: deny
+
+# in detection mode, deployment will not be denied, but only prompted
+# and logged. this allows testing the functionality without
+# interrupting operation.
+detectionMode: false
+
+# namespaced validation allows to restrict the namespaces that will be subject to Connaisseur verification.
+# when enabled, based on namespaced validation mode ('ignore' or 'validate')
+# - either all namespaces with label "securesystemsengineering.connaisseur/webhook=ignore" are ignored
+# - or only namespaces with label "securesystemsengineering.connaisseur/webhook=validate" are validated.
+# warning: enabling namespaced validation, allows roles with edit permission on a namespace to disable
+# validation for that namespace
+namespacedValidation:
+  enabled: true
+  mode: validate # 'ignore' or 'validate'
+
+# debug: true
+
+# alerting is implemented in form of simple POST requests with json payload
+# you can use and/or adapt the predefined Slack/OpsGenie/Keybase templates and the examples below
+# to channel alert notifications to Slack/OpsGenie/Keybase or create a custom template for a customized alert
+# payload to use with a simple POST request to the receiver_url to receive alerts.
+# Parameters you can use in your templates are "alert_message", "priority", "connaisseur_pod_id", "cluster",
+# "timestamp", "request_id" and "images" each one basically meaning what their names indicate
+#
+# Below is an example config
+
+#alerting:
+#  cluster_identifier: example-cluster-staging-europe # defaults to "not specified"
+#  admit_request:
+#    templates:
+#      # <template> needs to be chosen such that <template>.json matches one of the file names
+#      # in the ./alert_payload_templates directory
+#      - template: opsgenie #REQUIRED!
+#        receiver_url: https://api.eu.opsgenie.com/v2/alerts #REQUIRED!
+#        priority: 4 #(defaults to 3)
+#        custom_headers: ["Authorization: GenieKey <Your-Genie-Key>"]
+#        payload_fields:
+#          responders:
+#            - username: "testuser@testcompany.de"
+#              type: user
+#          visibleTo:
+#            - username: "testuser@testcompany.de"
+#              type: user
+#          tags:
+#            - "deployed_an_image"
+#        fail_if_alert_sending_fails: True  # (defaults to False, turning it to True will make Connaisseur deny your
+#                                           # deployment (even in detection mode))
+#      - template: slack #REQUIRED!
+#        receiver_url: https://hooks.slack.com/services/<Your-Slack-Hook-Path>
+#        priority: 1
+#  reject_request:
+#    templates:
+#      - template: keybase  #REQUIRED!
+#        receiver_url: https://bots.keybase.io/webhookbot/<Your-Keybase-Hook-Token>
+#        fail_if_alert_sending_fails: True
+
